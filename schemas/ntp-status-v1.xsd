@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:simpleType name="Outcome">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="success"/><xs:enumeration value="failure"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="OptionalDecimal">
+    <xs:union memberTypes="xs:decimal">
+      <xs:simpleType><xs:restriction base="xs:string"><xs:length value="0"/></xs:restriction></xs:simpleType>
+    </xs:union>
+  </xs:simpleType>
+  <xs:element name="NTPClientStatus">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="WorkstationName" type="xs:string"/>
+        <xs:element name="IPAddress" type="xs:string"/>
+        <xs:element name="IPAddressSource">
+          <xs:simpleType><xs:restriction base="xs:string">
+            <xs:enumeration value="ntp_socket"/><xs:enumeration value="unavailable"/>
+          </xs:restriction></xs:simpleType>
+        </xs:element>
+        <xs:element name="PrimaryNTPServer" type="xs:string"/>
+        <xs:element name="SecondaryNTPServer" type="xs:string"/>
+        <xs:element name="ActiveNTPServer" type="xs:string"/>
+        <xs:element name="ActiveServerRole" type="xs:string"/>
+        <xs:element name="CurrentSystemTime" type="xs:dateTime"/>
+        <xs:element name="MeasuredOffsetMilliseconds" type="OptionalDecimal"/>
+        <xs:element name="AppliedCorrectionMilliseconds" type="xs:decimal"/>
+        <xs:element name="SyncStatus">
+          <xs:simpleType><xs:restriction base="xs:string">
+            <xs:enumeration value="applied"/><xs:enumeration value="skipped"/><xs:enumeration value="failed"/>
+          </xs:restriction></xs:simpleType>
+        </xs:element>
+        <xs:element name="SyncReason" type="xs:string"/>
+        <xs:element name="Message" type="xs:string"/>
+        <xs:element name="Attempts">
+          <xs:complexType><xs:sequence>
+            <xs:element name="Attempt" minOccurs="1" maxOccurs="2">
+              <xs:complexType><xs:sequence>
+                <xs:element name="Server" type="xs:string"/>
+                <xs:element name="ServerRole" type="xs:string"/>
+                <xs:element name="Reason" type="xs:string"/>
+                <xs:element name="Message" type="xs:string"/>
+              </xs:sequence><xs:attribute name="status" type="Outcome" use="required"/></xs:complexType>
+            </xs:element>
+          </xs:sequence></xs:complexType>
+        </xs:element>
+      </xs:sequence>
+      <xs:attribute name="schemaVersion" type="xs:string" use="required" fixed="1.0"/>
+      <xs:attribute name="status" type="Outcome" use="required"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

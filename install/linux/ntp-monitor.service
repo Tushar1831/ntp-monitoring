@@ -1,0 +1,19 @@
+[Unit]
+Description=NTP Client Monitor (offset tracking + XML logging)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Run as root only if sync_system_clock is true in config.json (clock_settime needs it).
+# If you only want offset monitoring/logging, change this to an unprivileged user.
+User=root
+WorkingDirectory=/opt/ntp-monitor
+ExecStart=/usr/bin/python3 /opt/ntp-monitor/main.py --config /opt/ntp-monitor/config.json
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

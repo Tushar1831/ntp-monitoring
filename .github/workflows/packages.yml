@@ -1,0 +1,76 @@
+name: Build and test installers
+on:
+  workflow_dispatch:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - run: python -B -m unittest discover -s tests -v
+      - run: python -m pip install -r packaging/requirements-build.txt
+      - run: python scripts/build_bundle.py
+      - name: Compile installer
+        shell: pwsh
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" packaging\windows\installer.iss
+          if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed' }
+      - name: Exercise installed service (runner contains Python)
+        shell: powershell
+        run: scripts\verify_windows.ps1 -Installer (Get-ChildItem artifacts\*-setup.exe).FullName -AllowExistingPython
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64-installer
+          path: artifacts/*
+  linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -B -m unittest discover -s tests -v
+      - name: Build bundle on Rocky Linux 9 (glibc 2.34)
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src rockylinux:9 /bin/bash -ec '
+            dnf install -y python3.11 python3.11-pip python3.11-tkinter binutils
+            python3.11 -m pip install -r packaging/requirements-build.txt
+            python3.11 scripts/build_bundle.py
+          '
+          sudo chown -R "$(id -u):$(id -g)" build dist
+      - run: sudo apt-get update && sudo apt-get install -y rpm file binutils
+      - run: python scripts/build_linux_packages.py
+      - name: Verify DEB without Python in clean Ubuntu container
+        run: |
+          docker run --rm -v "$PWD:/src:ro" ubuntu:22.04 /bin/bash -ec '
+            apt-get update
+            apt-get install -y --no-install-recommends /src/artifacts/*.deb
+            /bin/sh /src/scripts/verify_linux_runtime.sh
+            apt-get install -y --no-install-recommends xvfb
+            /bin/sh /src/scripts/verify_linux_desktop.sh
+            apt-get remove -y ntp-monitor
+            test -f /etc/ntp-monitor/config.json
+            test ! -e /opt/ntp-monitor/ntp-monitor
+          '
+      - name: Verify RPM without Python in clean Rocky container
+        run: |
+          docker run --rm -v "$PWD:/src:ro" rockylinux:9-minimal /bin/bash -ec '
+            microdnf install -y systemd zlib polkit libX11 libXft libXScrnSaver fontconfig
+            rpm -ivh /src/artifacts/*.rpm
+            /bin/sh /src/scripts/verify_linux_runtime.sh
+            rpm -e ntp-monitor
+            test ! -e /opt/ntp-monitor/ntp-monitor
+          '
+      - name: Verify systemd lifecycle on runner VM
+        run: sudo bash scripts/verify_linux_service.sh artifacts/*.deb
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-x64-packages
+          path: artifacts/*

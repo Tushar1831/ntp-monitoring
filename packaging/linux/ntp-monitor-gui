@@ -1,0 +1,7 @@
+#!/bin/sh
+# Installed root-owned; request authentication for access to protected settings.
+set -eu
+if [ "$(id -u)" = 0 ]; then
+    exec /opt/ntp-monitor/gui/ntp-monitor-gui "$@"
+fi
+exec pkexec env DISPLAY="${DISPLAY-}" XAUTHORITY="${XAUTHORITY-}" /opt/ntp-monitor/gui/ntp-monitor-gui "$@"

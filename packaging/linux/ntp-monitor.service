@@ -1,0 +1,24 @@
+[Unit]
+Description=NTP Client Monitor
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=root
+UMask=0027
+ExecStart=/opt/ntp-monitor/ntp-monitor --config /etc/ntp-monitor/config.json
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/log/ntp-monitor
+CapabilityBoundingSet=CAP_SYS_TIME
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=NTP Client Monitor
+Comment=Network time status and settings
+Exec=/usr/bin/ntp-monitor-gui
+Icon=preferences-system-time
+Terminal=false
+Categories=System;Settings;

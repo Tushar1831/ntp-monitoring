@@ -1,0 +1,3 @@
+# Build machines only. Target machines do not install Python or pip packages.
+pyinstaller==6.16.0
+pywin32==311; sys_platform == 'win32'
