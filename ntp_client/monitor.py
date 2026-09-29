@@ -21,7 +21,7 @@ import time
 from datetime import datetime, timezone
 
 from . import system_clock
-from .ntp_query import NtpQueryError, NtpResponseError, query_ntp_server
+from .ntp_query import CLOCK_STEP_TOLERANCE, NtpQueryError, NtpResponseError, query_ntp_server
 from .xml_logger import XmlLogger
 
 logger = logging.getLogger("ntp_monitor")
@@ -102,7 +102,7 @@ class NtpMonitor:
                 )
 
             self._consecutive_failures[role] = 0
-            sync = self._maybe_sync_clock(result["offset_seconds"])
+            sync = self._maybe_sync_clock(result["offset_seconds"], result)
             synced = sync["status"] == "applied"
 
             self.xml_logger.log_entry(
@@ -141,7 +141,7 @@ class NtpMonitor:
                     offset_ms=None, sync={'status': 'skipped', 'reason': 'no_usable_server',
                                           'applied_ms': 0.0, 'message': None})
 
-    def _maybe_sync_clock(self, offset_seconds):
+    def _maybe_sync_clock(self, offset_seconds, sample=None):
         """Report OS acceptance of a requested step, not independently measured accuracy."""
         def outcome(status, reason, applied_ms=0.0, message=None):
             return {"status": status, "reason": reason, "applied_ms": applied_ms, "message": message}
@@ -150,11 +150,21 @@ class NtpMonitor:
             return outcome("skipped", "invalid_offset")
         if not self.config.get("sync_system_clock"):
             return outcome("skipped", "disabled")
+        maximum = self.config.get('max_clock_correction_seconds', 5)
+        if abs(offset_seconds) > maximum:
+            return outcome('failed', 'correction_limit_exceeded', message=
+                           f'Offset exceeds the {maximum:g}-second automatic correction limit. Review the time source and local clock.')
         threshold = self.config.get("resync_threshold_seconds")
         if threshold is not None and abs(offset_seconds) < threshold:
             return outcome("skipped", "below_threshold")
         try:
-            corrected_ts = datetime.now(timezone.utc).timestamp() + offset_seconds
+            now = datetime.now(timezone.utc).timestamp()
+            if sample and 'monotonic_t4' in sample:
+                elapsed = time.monotonic() - sample['monotonic_t4']
+                if abs((now - sample['t4']) - elapsed) > CLOCK_STEP_TOLERANCE:
+                    return outcome('failed', 'local_clock_changed', message=
+                                   'Local clock changed after measurement; waiting for a fresh sample.')
+            corrected_ts = now + offset_seconds
             system_clock.set_system_time_utc(datetime.fromtimestamp(corrected_ts, tz=timezone.utc))
             return outcome("applied", "clock_set", offset_seconds * 1000.0)
         except (system_clock.ClockSyncError, OSError, OverflowError, ValueError) as e:

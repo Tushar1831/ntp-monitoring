@@ -10,6 +10,7 @@ DEFAULTS = {
     'setup_complete': True, 'secondary_server': None, 'timeout_seconds': 5, 'log_rotation': 'none',
     'max_log_entries_per_file': 20000, 'sync_system_clock': False,
     'resync_threshold_seconds': 0.5, 'workstation_name': None,
+    'max_clock_correction_seconds': 5,
 }
 KEYS = set(DEFAULTS) | {'primary_server', 'log_directory',
                         'check_interval_minutes', 'check_interval_seconds'}
@@ -83,6 +84,11 @@ def load_config(path):
         raise ValueError('sync_system_clock: expected true or false')
     if config['resync_threshold_seconds'] is not None:
         _number('resync_threshold_seconds', config['resync_threshold_seconds'], 0)
+    maximum = _number('max_clock_correction_seconds', config['max_clock_correction_seconds'], 0)
+    if maximum == 0:
+        raise ValueError('max_clock_correction_seconds: must be positive')
+    if config['resync_threshold_seconds'] is not None and config['resync_threshold_seconds'] > maximum:
+        raise ValueError('resync_threshold_seconds: must not exceed max_clock_correction_seconds')
     if config['max_log_entries_per_file'] is not None:
         _number('max_log_entries_per_file', config['max_log_entries_per_file'], 1, integer=True)
     if config['log_rotation'] not in ('none', 'daily'):

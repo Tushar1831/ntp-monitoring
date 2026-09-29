@@ -158,6 +158,8 @@ class MonitorWindow:
             reasons = {'clock_set': 'System clock updated', 'disabled': 'Monitoring only',
                        'below_threshold': 'Offset is below the configured threshold',
                        'clock_set_failed': 'The operating system rejected the adjustment',
+                       'correction_limit_exceeded': 'Automatic correction blocked: offset exceeds the limit',
+                       'local_clock_changed': 'Automatic correction blocked: local clock changed after measurement',
                        'no_usable_server': 'Neither configured server supplied usable time',
                        'invalid_response': 'Server response rejected', 'query_failed': 'Server could not be reached'}
             text = labels.get(status.get('SyncStatus'), 'Unknown result') + ' — ' + reasons.get(status.get('SyncReason'), status.get('SyncReason', ''))
@@ -220,6 +222,7 @@ class MonitorWindow:
         fields = [('primary_server', 'Primary NTP server'), ('secondary_server', 'Fallback NTP server'),
                   ('check_interval_minutes', 'Interval (1–15 minutes)'), ('timeout_seconds', 'Timeout (seconds)'),
                   ('resync_threshold_seconds', 'Correction threshold (seconds; blank = none)'),
+                  ('max_clock_correction_seconds', 'Maximum automatic correction (seconds)'),
                   ('log_directory', 'XML / log directory'), ('log_rotation', 'Rotation (none / daily)'),
                   ('max_log_entries_per_file', 'History entry limit (blank = unlimited)'),
                   ('workstation_name', 'Host override (blank = automatic)')]
@@ -241,8 +244,8 @@ class MonitorWindow:
             if key == 'log_directory':
                 ttk.Button(body, text='Browse…', command=lambda: self.choose_directory(dialog, variables['log_directory'])).grid(row=row, column=2, padx=6)
         sync = tk.BooleanVar(value=raw.get('sync_system_clock') is True)
-        ttk.Checkbutton(body, text='Adjust system clock (requires service privileges)', variable=sync).grid(row=9, columnspan=2, sticky='w', pady=8)
-        ttk.Label(body, text='Clock adjustment is optional. Save and start applies settings and enables startup at boot.').grid(row=10, columnspan=2, sticky='w')
+        ttk.Checkbutton(body, text='Adjust system clock (requires service privileges)', variable=sync).grid(row=len(fields), columnspan=2, sticky='w', pady=8)
+        ttk.Label(body, text='Clock adjustment is optional. Corrections above the maximum are blocked and logged.').grid(row=len(fields) + 1, columnspan=2, sticky='w')
 
         def save():
             try:
@@ -255,7 +258,7 @@ class MonitorWindow:
                         if number is not None and not number.is_integer():
                             raise ValueError(key + ': enter a whole number')
                         value = int(number) if number is not None else None
-                    elif key in ('timeout_seconds', 'resync_threshold_seconds'):
+                    elif key in ('timeout_seconds', 'resync_threshold_seconds', 'max_clock_correction_seconds'):
                         value = float(value) if value else None
                     elif key in ('secondary_server', 'workstation_name') and not value:
                         value = None
@@ -274,8 +277,8 @@ class MonitorWindow:
                 self.submit(start_configured_service, self.started, self.service_error)
             else:
                 self.banner.set('Settings saved. This configuration is not attached to an installed service.')
-        ttk.Button(body, text='Save and start' if self.controls_service else 'Save settings', command=save).grid(row=11, column=1, sticky='e', pady=(12, 0))
-        ttk.Button(body, text='Cancel', command=dialog.destroy).grid(row=11, column=0, sticky='w', pady=(12, 0))
+        ttk.Button(body, text='Save and start' if self.controls_service else 'Save settings', command=save).grid(row=len(fields) + 2, column=1, sticky='e', pady=(12, 0))
+        ttk.Button(body, text='Cancel', command=dialog.destroy).grid(row=len(fields) + 2, column=0, sticky='w', pady=(12, 0))
 
     def started(self, state):
         self.service = state

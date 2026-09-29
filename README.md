@@ -90,7 +90,11 @@ ntp_monitor/
 | `max_log_entries_per_file` | Positive integer cap (default `20000`); `null` disables trimming |
 | `sync_system_clock` | `true` to actually set the local clock; `false` to just monitor/log |
 | `resync_threshold_seconds` | Nonnegative finite threshold (default `0.5`); `null` disables the threshold |
+| `max_clock_correction_seconds` | Positive finite maximum automatic correction in either direction (default `5`); larger offsets are logged as failures without changing the clock |
 | `workstation_name` | Override for the hostname used in the log filename; `null` = auto-detect |
+
+See [pilot synchronisation safeguards](docs/pilot-safeguards.md) for correction
+limits, clock-change detection, timestamp rollover handling and pilot checks.
 
 Both the CLI and Windows service validate configuration before startup. Invalid
 values fail startup with the field name in the diagnostic; Windows also reports
@@ -215,7 +219,7 @@ for `clock_settime`.
 
 Run `python3 -B -m unittest discover -s tests -v` from the project root
 (use `python` on Windows). Tests require only the standard library and do not
-change the system clock or contact external servers. All 86 tests currently pass with no expected failures. See
+change the system clock or contact external servers. All 96 tests pass. See
 [testing documentation](docs/testing.md) for coverage, a strict
 failure-reporting command, and remaining platform acceptance tests.
 

@@ -15,10 +15,15 @@ Monitor tests exercise real XML output together with fallback and sync decisions
 
 ## Current baseline
 
-All 86 tests pass with no expected failures. Previously recorded configuration,
+All 96 tests pass with no expected failures. Previously recorded configuration,
 response validation, synchronization, retention, recovery, and Windows startup
 regressions are now ordinary passing tests. This is a unit-test baseline, not
 Windows/Linux deployment acceptance.
+
+Pilot regression coverage includes forward/backward local clock steps during a
+query, clock changes before correction, impossible server processing durations,
+small timestamp noise, 2036 era rollover, maximum-correction boundaries, and
+audited rejection of excessive offsets. See [pilot safeguards](pilot-safeguards.md).
 
 The strict runner remains available and currently runs the same passing suite:
 

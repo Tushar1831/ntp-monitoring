@@ -101,6 +101,7 @@ class ConfigTests(unittest.TestCase):
             'check_interval_seconds': [True, 60.5, None],
             'timeout_seconds': [0, -1, 301, True, '5', None, float('nan'), float('inf')],
             'resync_threshold_seconds': [-1, True, '0.5', float('nan'), float('inf')],
+            'max_clock_correction_seconds': [0, -1, True, '5', None, float('nan'), float('inf')],
             'sync_system_clock': ['false', 0, 1, None],
             'max_log_entries_per_file': [0, -1, 2.5, True, '10'],
             'log_rotation': ['weekly', None, [], {}],
@@ -138,6 +139,12 @@ class ConfigTests(unittest.TestCase):
                            max_log_entries_per_file=None, workstation_name='HOST_01.example',
                            primary_server='192.0.2.1', timeout_seconds=0.5)
         self.assertIsNone(self.load()['max_log_entries_per_file'])
+
+    def test_correction_limit_defaults_and_threshold_consistency(self):
+        self.assertEqual(self.load()['max_clock_correction_seconds'], 5)
+        self.config['resync_threshold_seconds'] = 6
+        with self.assertRaisesRegex(ValueError, 'must not exceed'):
+            self.load()
 
     def test_reload_reads_new_configuration(self):
         self.config['check_interval_minutes'] = 1

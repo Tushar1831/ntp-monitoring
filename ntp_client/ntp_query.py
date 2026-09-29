@@ -13,6 +13,9 @@ import time
 
 NTP_PORT = 123
 NTP_DELTA = 2208988800  # seconds between 1900-01-01 (NTP epoch) and 1970-01-01 (Unix epoch)
+NTP_ERA_SECONDS = 2 ** 32
+CLOCK_STEP_TOLERANCE = 0.1  # Allow scheduling/timestamp noise, reject clock steps.
+NEGATIVE_DELAY_TOLERANCE = 0.001
 NTP_PACKET_FORMAT = "!B B B b 11I"  # 48-byte NTP packet header
 
 
@@ -28,11 +31,15 @@ def _to_ntp_timestamp(unix_time):
     return unix_time + NTP_DELTA
 
 
-def _read_ntp_timestamp(data, offset):
+def _read_ntp_timestamp(data, offset, reference_time):
     seconds, fraction = struct.unpack("!II", data[offset:offset + 8])
     if seconds == 0 and fraction == 0:
         return 0.0
-    return (seconds + fraction / 2 ** 32) - NTP_DELTA
+    value = seconds + fraction / 2 ** 32
+    # The wire format has no era number. Select the era nearest the local
+    # clock, which must be approximately correct (within 68 years).
+    era = round((reference_time + NTP_DELTA - value) / NTP_ERA_SECONDS)
+    return value + era * NTP_ERA_SECONDS - NTP_DELTA
 
 
 def query_ntp_server(server, port=NTP_PORT, timeout=5, version=3):
@@ -63,10 +70,11 @@ def query_ntp_server(server, port=NTP_PORT, timeout=5, version=3):
             local_ip = sock.getsockname()[0]
 
             t1 = time.time()  # client transmit time (T1), local system clock, UTC-based
+            monotonic_t1 = time.monotonic()
             t1_ntp = _to_ntp_timestamp(t1)
             seconds = int(t1_ntp)
             fraction = int((t1_ntp - seconds) * (2 ** 32))
-            struct.pack_into("!II", packet, 40, seconds, fraction)  # Transmit Timestamp field
+            struct.pack_into("!II", packet, 40, seconds % NTP_ERA_SECONDS, fraction)
             sock.send(bytes(packet))
         except socket.gaierror as e:
             raise NtpQueryError(f"DNS resolution failed for '{server}': {e}") from e
@@ -76,6 +84,7 @@ def query_ntp_server(server, port=NTP_PORT, timeout=5, version=3):
         try:
             data = sock.recv(1024)
             t4 = time.time()  # Capture arrival before cleanup/parsing.
+            monotonic_t4 = time.monotonic()
         except socket.timeout as e:
             raise NtpQueryError(f"Timed out waiting for response from '{server}' ({timeout}s)") from e
         except OSError as e:
@@ -107,17 +116,21 @@ def query_ntp_server(server, port=NTP_PORT, timeout=5, version=3):
     if leap_indicator == 3:
         raise NtpResponseError(f"Server '{server}' reports unsynchronized time (leap indicator 3)")
 
-    t2 = _read_ntp_timestamp(data, 32)  # server receive time
-    t3 = _read_ntp_timestamp(data, 40)  # server transmit time
+    t2 = _read_ntp_timestamp(data, 32, t1)  # server receive time
+    t3 = _read_ntp_timestamp(data, 40, t1)  # server transmit time
 
     if t2 == 0.0 or t3 == 0.0:
         raise NtpResponseError(f"Server '{server}' returned an empty/unsynchronized timestamp")
 
     if t3 < t2 or t4 < t1:
         raise NtpResponseError(f"Server '{server}' returned inconsistent timing or local clock moved backwards")
+    if abs((t4 - t1) - (monotonic_t4 - monotonic_t1)) > CLOCK_STEP_TOLERANCE:
+        raise NtpResponseError('Local clock changed during the query; sample discarded')
 
     offset_seconds = ((t2 - t1) + (t3 - t4)) / 2.0
     delay_seconds = (t4 - t1) - (t3 - t2)
+    if delay_seconds < -NEGATIVE_DELAY_TOLERANCE:
+        raise NtpResponseError('Server processing time exceeds the measured exchange; sample discarded')
 
 
     return {
@@ -132,4 +145,5 @@ def query_ntp_server(server, port=NTP_PORT, timeout=5, version=3):
         "t2": t2,
         "t3": t3,
         "t4": t4,
+        "monotonic_t4": monotonic_t4,
     }

@@ -8,6 +8,7 @@
   "max_log_entries_per_file": 20000,
   "sync_system_clock": false,
   "resync_threshold_seconds": 0.5,
+  "max_clock_correction_seconds": 5,
   "workstation_name": null,
   "setup_complete": false
 }

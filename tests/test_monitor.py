@@ -174,6 +174,46 @@ class MonitorTests(unittest.TestCase):
         self.assertEqual(self.monitor._maybe_sync_clock(100)["reason"], "disabled")
         self.set_clock.assert_not_called()
 
+    def test_large_corrections_rejected_and_audited_in_both_directions(self):
+        self.monitor.config['sync_system_clock'] = True
+        for offset in (-5.01, 5.01):
+            self.result['offset_seconds'] = offset
+            self.monitor.check_once()
+            root = self.snapshot()
+            self.assertEqual(root.attrib['status'], 'failure')
+            self.assertEqual(root.findtext('SyncReason'), 'correction_limit_exceeded')
+            self.assertEqual(root.findtext('AppliedCorrectionMilliseconds'), '0.000')
+            self.assertEqual(self.entries()[-1].findtext('SyncStatus'), 'failed')
+        self.set_clock.assert_not_called()
+
+    def test_configured_maximum_boundary_is_allowed(self):
+        self.monitor.config.update(sync_system_clock=True, max_clock_correction_seconds=2)
+        for offset in (-2, 2):
+            self.assertEqual(self.monitor._maybe_sync_clock(offset)['status'], 'applied')
+        self.assertEqual(self.monitor._maybe_sync_clock(2.01)['reason'], 'correction_limit_exceeded')
+        self.assertEqual(self.set_clock.call_count, 2)
+
+    def test_clock_change_after_query_blocks_correction(self):
+        self.monitor.config['sync_system_clock'] = True
+        self.result.update(t4=1000, monotonic_t4=10)
+        with patch('ntp_client.monitor.datetime') as clock, \
+                patch('ntp_client.monitor.time.monotonic', return_value=11):
+            clock.now.return_value = datetime.fromtimestamp(1061, timezone.utc)
+            self.monitor.check_once()
+        self.assertEqual(self.snapshot().findtext('SyncReason'), 'local_clock_changed')
+        self.set_clock.assert_not_called()
+
+    def test_unchanged_clock_after_query_uses_current_time(self):
+        self.monitor.config['sync_system_clock'] = True
+        sample = dict(t4=1000, monotonic_t4=10)
+        with patch('ntp_client.monitor.datetime') as clock, \
+                patch('ntp_client.monitor.time.monotonic', return_value=12):
+            clock.now.return_value = datetime.fromtimestamp(1002, timezone.utc)
+            clock.fromtimestamp.side_effect = datetime.fromtimestamp
+            result = self.monitor._maybe_sync_clock(1, sample)
+        self.assertEqual(result['status'], 'applied')
+        self.assertEqual(self.set_clock.call_args[0][0].timestamp(), 1003)
+
     def test_threshold_skips_small_offsets_in_both_directions(self):
         self.monitor.config['sync_system_clock'] = True
         for offset in (-0.49, 0, 0.49):
@@ -247,7 +287,11 @@ class MonitorTests(unittest.TestCase):
         self.monitor.config['sync_system_clock'] = True
         self.query.side_effect = query_ntp_server
         with patch('ntp_client.ntp_query.socket.socket') as factory, \
+                patch('ntp_client.ntp_query.time.monotonic', side_effect=[10, 10.5, 11, 11.5, 11.5]), \
+                patch('ntp_client.monitor.datetime') as clock, \
                 patch('ntp_client.ntp_query.time.time', side_effect=[1000, 1000.5, 1000, 1000.5]):
+            clock.now.return_value = datetime.fromtimestamp(1000.5, timezone.utc)
+            clock.fromtimestamp.side_effect = datetime.fromtimestamp
             factory.return_value.getsockname.return_value = ('192.0.2.10', 50000)
             factory.return_value.recv.side_effect = [packet(leap=3), packet()]
             self.monitor.check_once()

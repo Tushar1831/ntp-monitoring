@@ -45,10 +45,14 @@ with tempfile.TemporaryDirectory() as temporary:
             entries = [w for w in descendants(dialog) if isinstance(w, ttk.Entry) and not isinstance(w, ttk.Combobox)]
             entries[0].delete(0, 'end')
             entries[0].insert(0, 'time.test')
+            maximum = next(w for w in entries if int(w.grid_info()['row']) == 5)
+            maximum.delete(0, 'end')
+            maximum.insert(0, '2')
             buttons = [w for w in descendants(dialog) if isinstance(w, ttk.Button)]
             next(w for w in buttons if w.cget('text') == 'Save and start').invoke()
             pump(root)
             assert load_config(path)['setup_complete'] is True
+            assert load_config(path)['max_clock_correction_seconds'] == 2
             start.assert_called_once_with()
             assert window.service == 'active'
             if broken:
