@@ -18,8 +18,14 @@ mkdir -p /var/log/ntp-monitor
 chmod 0750 /var/log/ntp-monitor
 if [ -d /run/systemd/system ]; then
     systemctl daemon-reload
-    systemctl enable ntp-monitor.service
-    systemctl restart ntp-monitor.service
+    if /opt/ntp-monitor/ntp-monitor --check-config --require-setup; then
+        systemctl enable ntp-monitor.service
+        systemctl restart ntp-monitor.service
+    else
+        systemctl disable ntp-monitor.service
+        systemctl stop ntp-monitor.service
+        echo 'Open NTP Client Monitor to finish setup.'
+    fi
 fi
 '''
 PRE = '''#!/bin/sh
@@ -54,6 +60,7 @@ def stage(destination):
     shutil.copytree(gui, destination / 'opt/ntp-monitor/gui', symlinks=True)
     config = json.loads((ROOT / 'config.json').read_text())
     config['log_directory'] = '/var/log/ntp-monitor'
+    config['setup_complete'] = False
     write(destination / 'etc/ntp-monitor/config.json', json.dumps(config, indent=2) + '\n', 0o640)
     (destination / 'etc/ntp-monitor').chmod(0o750)
     write(destination / 'usr/lib/systemd/system/ntp-monitor.service',
@@ -147,5 +154,5 @@ fi
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--version', default='1.0.0')
+    parser.add_argument('--version', default='1.1.0')
     build(parser.parse_args().version)

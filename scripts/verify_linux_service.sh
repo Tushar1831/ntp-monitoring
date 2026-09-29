@@ -12,12 +12,14 @@ install_package() {
     esac
 }
 install_package
+if systemctl is-active --quiet ntp-monitor; then echo 'Fresh install started before setup' >&2; exit 1; fi
+if systemctl is-enabled --quiet ntp-monitor; then echo 'Fresh install enabled before setup' >&2; exit 1; fi
 systemctl stop ntp-monitor
 cat > /etc/ntp-monitor/config.json <<'EOF'
 {"primary_server":"127.0.0.1","timeout_seconds":0.1,"log_directory":"/var/log/ntp-monitor","sync_system_clock":false,"workstation_name":"package-test"}
 EOF
 chmod 0640 /etc/ntp-monitor/config.json
-systemctl start ntp-monitor
+systemctl enable --now ntp-monitor
 systemctl is-enabled ntp-monitor
 systemctl is-active ntp-monitor
 for attempt in $(seq 1 30); do

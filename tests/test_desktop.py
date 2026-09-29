@@ -67,3 +67,26 @@ class DesktopTests(unittest.TestCase):
             self.assertEqual(service_command('restart', 'Linux'), ['pkexec', 'systemctl', 'restart', 'ntp-monitor.service'])
         with self.assertRaises(ValueError):
             service_command('arbitrary command', 'Windows')
+
+    def test_save_creates_missing_settings(self):
+        new = self.path.parent / 'new' / 'config.json'
+        save_config(new, dict(self.raw, setup_complete=True))
+        self.assertTrue(load_config(new)['setup_complete'])
+
+    def test_repair_keeps_original_backup(self):
+        self.path.write_text('{broken')
+        save_config(self.path, dict(self.raw, setup_complete=True))
+        self.assertEqual(Path(str(self.path) + '.previous').read_text(), '{broken')
+        self.assertEqual(load_config(self.path)['primary_server'], 'time.test')
+
+    def test_start_verifies_running_and_enables_boot(self):
+        from ntp_client.desktop import start_configured_service
+        with patch('ntp_client.desktop.control_service', side_effect=['', '', 'active']) as control, patch('ntp_client.desktop.time.sleep'):
+            self.assertEqual(start_configured_service(), 'active')
+            self.assertEqual([c.args[0] for c in control.call_args_list], ['enable', 'restart', 'status'])
+
+    def test_failed_start_is_not_reported_as_success(self):
+        from ntp_client.desktop import start_configured_service
+        with patch('ntp_client.desktop.control_service', side_effect=['', '', 'failed']), patch('ntp_client.desktop.time.sleep'):
+            with self.assertRaisesRegex(RuntimeError, 'did not stay running'):
+                start_configured_service()

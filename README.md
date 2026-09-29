@@ -1,5 +1,12 @@
 # NTP Client Monitor
 
+**Installing the app?** Follow the [end-user installation guide](docs/install-app.md).
+Use a built setup EXE (Windows) or DEB/RPM (Linux), not the source ZIP.
+Fresh installs open first-run setup; **Save and start** configures background startup.
+No terminal, Python, or build tools are needed by end users.
+
+
+
 A lightweight, **dependency-free** (Python 3.7+ standard library only) NTP
 client/monitor for **Windows and Linux**. It behaves like a PRTG NTP sensor:
 
@@ -29,8 +36,8 @@ Ubuntu 22.04+, and RHEL-compatible 9 systems** (Linux x86-64 with systemd).
 ARM and Alpine Linux are not currently package targets. Targeted does not mean
 verified on every listed OS; see [installer build and verification instructions](docs/installers.md).
 
-Current evidence: Linux DEB/RPM clean-container runtime tests passed without
-system Python, and DEB service lifecycle passed under systemd in a container.
+Current evidence: version 1.1.0 Linux package checks passed without system Python;
+first-run GUI tests and the DEB pending-setup/service lifecycle passed in containers.
 Windows build/testing and real VM reboot checks remain outstanding. See the
 [verification record](docs/installer-verification.md) for exact scope.
 
@@ -208,7 +215,7 @@ for `clock_settime`.
 
 Run `python3 -B -m unittest discover -s tests -v` from the project root
 (use `python` on Windows). Tests require only the standard library and do not
-change the system clock or contact external servers. All 78 tests currently pass with no expected failures. See
+change the system clock or contact external servers. All 86 tests currently pass with no expected failures. See
 [testing documentation](docs/testing.md) for coverage, a strict
 failure-reporting command, and remaining platform acceptance tests.
 

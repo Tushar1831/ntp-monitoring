@@ -43,6 +43,7 @@ def main():
     parser.add_argument("--once", action="store_true", help="Run a single check and exit")
     parser.add_argument("--verbose", action="store_true", help="Enable debug logging")
     parser.add_argument("--check-config", action="store_true", help="Validate configuration and exit without network or clock changes")
+    parser.add_argument("--require-setup", action="store_true", help="Require completed first-run setup during validation")
     args = parser.parse_args()
 
     setup_logging(args.verbose)
@@ -54,13 +55,17 @@ def main():
         logger.error("Failed to load config '%s': %s", args.config, e)
         sys.exit(1)
 
+    if args.require_setup and not config["setup_complete"]:
+        logger.error("Open NTP Client Monitor and choose Save and start to complete setup.")
+        sys.exit(2)
+
     if args.check_config:
         logger.info("Configuration is valid: %s", args.config)
         return
 
     try:
         monitor = NtpMonitor(config)
-    except OSError as e:
+    except (OSError, ValueError) as e:
         logger.error("Failed to initialize monitor: %s", e)
         sys.exit(1)
 

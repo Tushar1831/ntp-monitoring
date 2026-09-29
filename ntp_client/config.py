@@ -7,7 +7,7 @@ import re
 
 
 DEFAULTS = {
-    'secondary_server': None, 'timeout_seconds': 5, 'log_rotation': 'none',
+    'setup_complete': True, 'secondary_server': None, 'timeout_seconds': 5, 'log_rotation': 'none',
     'max_log_entries_per_file': 20000, 'sync_system_clock': False,
     'resync_threshold_seconds': 0.5, 'workstation_name': None,
 }
@@ -54,7 +54,7 @@ def load_config(path):
             result[key] = value
         return result
 
-    with open(path, encoding='utf-8') as stream:
+    with open(path, encoding='utf-8-sig') as stream:
         raw = json.load(stream, object_pairs_hook=unique_object)
     if not isinstance(raw, dict):
         raise ValueError('Configuration must be a JSON object')
@@ -77,6 +77,8 @@ def load_config(path):
     timeout = _number('timeout_seconds', config['timeout_seconds'], 0)
     if timeout == 0 or timeout > seconds:
         raise ValueError('timeout_seconds: must be positive and no greater than the check interval')
+    if type(config['setup_complete']) is not bool:
+        raise ValueError('setup_complete: expected true or false')
     if type(config['sync_system_clock']) is not bool:
         raise ValueError('sync_system_clock: expected true or false')
     if config['resync_threshold_seconds'] is not None:

@@ -16,7 +16,7 @@ in the supplied reference. The background service continues when the window clos
 **Check now restarts the service** to trigger its initial cycle, using its configured
 clock-adjustment policy. It asks before doing so. It does not start a competing
 monitor process. Saving settings validates them before replacement; the user can
-then restart the service to apply the change. Invalid edits leave the original
+start the service to apply the change. Invalid edits leave the original
 configuration untouched.
 
 The window reads real status and history XML. It does not invent healthy results:
@@ -32,6 +32,15 @@ hosting are explicitly shown as unavailable/out of scope.
 ![Desktop example](desktop-preview.png)
 
 The preview uses example data rendered on Linux; native Windows styling differs.
+
+## First-run setup and repair
+
+New installers leave the service stopped until the welcome screen is completed.
+Choose **Save and start** to validate/save settings, enable boot startup and start
+monitoring. Cancelling leaves setup pending. Missing or invalid configuration can
+be repaired in the same screen, with the previous file preserved as a backup.
+The diagnostics tab displays support details and provides Copy details without
+requiring a terminal. Settings can be changed later with the same Save and start action.
 
 ## Launch
 

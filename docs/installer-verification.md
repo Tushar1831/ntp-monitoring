@@ -58,3 +58,31 @@ The earlier service lifecycle test predates the frontend addition; it was not
 repeated for the GUI-enabled artifacts. Windows frontend/UAC, Linux desktop-menu
 polkit authentication, and Wayland integration are not validated here.
 The preview in desktop.md contains deterministic example data.
+
+## Version 1.1.0 — first-run workflow (29 September 2026)
+
+Built fresh DEB/RPM artifacts with `setup_complete: false`. The new acceptance
+checks verified that monitoring does not begin until configuration is completed.
+
+- 86 unit tests passed, with no expected failures.
+- GUI tests passed: automatic welcome screen, cancel without starting, Save and
+  start, malformed-settings repair with backup, Settings and window close.
+- Ubuntu 22.04 systemd container without Python: fresh disabled/stopped state,
+  completed-configuration startup, crash recovery, config-preserving reinstall,
+  uninstall and retained logs passed.
+- Rocky Linux 9 minimal container without Python: pending-setup exit code and
+  bundled-runtime/XML tests passed.
+- Linux bundle and package creation succeeded. `artifacts/SHA256SUMS` covers both
+  the older 1.0.0 packages and new 1.1.0 packages; use 1.1.0 for this workflow.
+
+The service lifecycle check supplies configuration programmatically, while the
+GUI interaction test substitutes service commands. A complete desktop UAT run
+with real authentication and reboot remains required. Windows build/installer
+scripts and acceptance tests were updated, but no Windows executable was built
+or installed in this environment.
+
+The originally reported Windows configuration-check failure has not been
+reproduced (its underlying CLI error was not supplied). The installer no longer
+fails generically on editable configuration: it leaves the service stopped,
+records diagnostics and opens the application for repair. Windows UTF-8 BOM
+configuration files are now accepted as well.

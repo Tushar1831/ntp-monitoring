@@ -154,3 +154,28 @@ class ConfigTests(unittest.TestCase):
                 self.assertRaises(SystemExit) as error:
             main.main()
         self.assertEqual(error.exception.code, 1)
+
+    def test_pending_setup_blocks_monitor_before_files_or_network(self):
+        from ntp_client.monitor import NtpMonitor
+        self.config['setup_complete'] = False
+        config = self.load()
+        with patch('ntp_client.monitor.XmlLogger') as logger:
+            with self.assertRaisesRegex(ValueError, 'Complete setup'):
+                NtpMonitor(config)
+            logger.assert_not_called()
+
+    def test_require_setup_cli_reports_pending(self):
+        self.config['setup_complete'] = False
+        self.load()
+        with patch('sys.argv', ['main.py', '--config', str(self.path), '--check-config', '--require-setup']), patch('main.setup_logging'), self.assertLogs('ntp_monitor', level='ERROR'), self.assertRaises(SystemExit) as error:
+            main.main()
+        self.assertEqual(error.exception.code, 2)
+
+    def test_windows_utf8_bom_configuration(self):
+        self.path.write_text(json.dumps(self.config), encoding='utf-8-sig')
+        self.assertEqual(main.load_config(self.path)['primary_server'], 'primary.test')
+
+    def test_setup_flag_must_be_boolean(self):
+        self.config['setup_complete'] = 'true'
+        with self.assertRaisesRegex(ValueError, 'setup_complete'):
+            self.load()

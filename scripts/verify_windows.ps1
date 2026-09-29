@@ -12,7 +12,7 @@ if (-not $AllowExistingPython) {
 $data = Join-Path $env:ProgramData 'NTPClientMonitor'
 if (Test-Path "$data\config.json") { throw 'Expected a fresh VM with no application data' }
 New-Item -ItemType Directory -Path $data -Force | Out-Null
-@{primary_server='127.0.0.1'; timeout_seconds=0.1; log_directory='./logs'; sync_system_clock=$false; workstation_name='package-test'} |
+@{primary_server='127.0.0.1'; timeout_seconds=0.1; log_directory='./logs'; sync_system_clock=$false; workstation_name='package-test'; setup_complete=$false} |
     ConvertTo-Json | Set-Content "$data\config.json" -Encoding Ascii
 function Install-Package {
     $process = Start-Process -FilePath $Installer -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-' -Wait -PassThru
@@ -22,6 +22,14 @@ function Assert-Running {
     if ((Get-Service NTPClientMonitor).Status -ne 'Running') { throw 'Service is not running' }
 }
 Install-Package
+if ((Get-Service NTPClientMonitor).Status -ne 'Stopped') { throw 'Service started before setup' }
+# Simulate GUI configuration completion for this installer-only acceptance test.
+$config = Get-Content "$data\config.json" -Raw | ConvertFrom-Json
+$config.setup_complete = $true
+$config | ConvertTo-Json | Set-Content "$data\config.json" -Encoding Ascii
+Set-Service NTPClientMonitor -StartupType Automatic
+Start-Service NTPClientMonitor
+Start-Sleep 2
 Assert-Running
 if ((Get-CimInstance Win32_Service -Filter "Name='NTPClientMonitor'").StartMode -ne 'Auto') { throw 'Not configured for boot startup' }
 for ($i=0; $i -lt 30 -and -not (Test-Path "$data\logs\package-test_ntpstatus.xml"); $i++) { Start-Sleep 1 }

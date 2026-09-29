@@ -29,6 +29,8 @@ logger = logging.getLogger("ntp_monitor")
 
 class NtpMonitor:
     def __init__(self, config):
+        if not config.get("setup_complete", True):
+            raise ValueError("Complete setup in NTP Client Monitor before starting monitoring")
         self.config = config
         self.workstation_name = config.get("workstation_name") or socket.gethostname()
         self.xml_logger = XmlLogger(

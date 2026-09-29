@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "1.0.0"
+  #define AppVersion "1.1.0"
 #endif
 [Setup]
 AppId={{5E6DAD37-A588-4DA9-B3E5-3A8520ED7C37}
@@ -28,13 +28,16 @@ Name: "{commonappdata}\NTPClientMonitor\logs"
 Source: "..\..\dist\ntp-monitor\*"; DestDir: "{app}\cli"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\..\dist\ntp-monitor-service\*"; DestDir: "{app}\service"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\..\dist\ntp-monitor-gui\*"; DestDir: "{app}\gui"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "..\..\config.json"; DestDir: "{commonappdata}\NTPClientMonitor"; Flags: onlyifdoesntexist uninsneveruninstall
+Source: "..\first-run.json"; DestName: "config.json"; DestDir: "{commonappdata}\NTPClientMonitor"; Flags: onlyifdoesntexist uninsneveruninstall
 Source: "service.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "service.ps1"; Flags: dontcopy
 Source: "..\..\schemas\*"; DestDir: "{app}\schemas"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\NTP Client Monitor"; Filename: "{app}\gui\ntp-monitor-gui.exe"
+
+[Run]
+Filename: "{app}\gui\ntp-monitor-gui.exe"; Description: "Open NTP Client Monitor to finish setup"; Flags: postinstall nowait skipifsilent runascurrentuser
 
 [Code]
 function ServiceCommand(Script, Action, Directory: String): Boolean;
@@ -55,16 +58,14 @@ begin
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
-var Code: Integer;
+var Details: AnsiString;
 begin
   if CurStep = ssPostInstall then begin
-    if not Exec(ExpandConstant('{app}\cli\ntp-monitor.exe'), '--check-config', '',
-      SW_HIDE, ewWaitUntilTerminated, Code) then
-      RaiseException('Could not run configuration validation.');
-    if Code <> 0 then
-      RaiseException('Configuration validation failed. Correct ProgramData\NTPClientMonitor\config.json and rerun setup.');
-    if not ServiceCommand(ExpandConstant('{app}\service.ps1'), 'Install', ExpandConstant('{app}')) then
-      RaiseException('Service installation/start failed. Inspect the Windows Application log and rerun setup.');
+    if not ServiceCommand(ExpandConstant('{app}\service.ps1'), 'Install', ExpandConstant('{app}')) then begin
+      LoadStringFromFile(ExpandConstant('{commonappdata}\NTPClientMonitor\installer.log'), Details);
+      RaiseException('Could not register the background service. ' + #13#10 + String(Details) + #13#10 +
+        'Retry setup with administrator permission. Your settings have been preserved.');
+    end;
   end;
 end;
 

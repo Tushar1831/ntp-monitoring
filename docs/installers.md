@@ -14,11 +14,19 @@ is needed on the endpoint. Linux still uses OS libraries (glibc >= 2.34 and
 zlib) and systemd. Build each platform natively; a Mac cannot generate the
 Windows binaries with PyInstaller.
 
+## Maintainer build (not an end-user step)
+
+On a Windows build machine with Python 3.11 x64 and Inno Setup 6 installed,
+double-click `scripts/build_windows.cmd`. It finds per-user or machine-wide Inno
+Setup, runs tests, builds the application, compiles the setup EXE, and opens the
+artifacts folder. Build details are retained in `artifacts/windows-build.log`.
+Send only the resulting setup EXE and end-user guide to UAT testers.
+
 ## Build
 
 Build dependencies require internet access initially. Endpoint installers need
 no Python downloads and can run offline when OS package prerequisites exist.
-The version defaults to 1.0.0; change the package version for each release.
+The version defaults to 1.1.0; change the package version for each release.
 
 Build background: [PyInstaller platform-specific output](https://pyinstaller.org/en/stable/operating-mode.html)
 and [Linux system-library limitations](https://pyinstaller.org/en/stable/usage.html).
@@ -29,7 +37,7 @@ Windows x64 build machine: install Python 3.11 x64 and Inno Setup 6, then:
 python -m pip install -r packaging/requirements-build.txt
 python -B -m unittest discover -s tests -v
 python scripts/build_bundle.py
-& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DAppVersion=1.0.0 packaging\windows\installer.iss
+& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DAppVersion=1.1.0 packaging\windows\installer.iss
 ```
 
 Linux: build the bundle on the Rocky Linux 9 / glibc 2.34 baseline container, then package it on
@@ -42,7 +50,7 @@ docker run --rm --platform linux/amd64 -v "$PWD:/src" -w /src \
     python3.11 -m pip install -r packaging/requirements-build.txt
     python3.11 scripts/build_bundle.py
   '
-python3 scripts/build_linux_packages.py --version 1.0.0
+python3 scripts/build_linux_packages.py --version 1.1.0
 ```
 
 Outputs are in `artifacts/`. The GitHub Actions workflow builds both platforms,
@@ -61,8 +69,8 @@ to open the window, not to run the service.
 ## Install and configure
 
 Windows: run the setup EXE as administrator (or use `/VERYSILENT /NORESTART`).
-It installs binaries under `Program Files\NTP Client Monitor`, registers
-`NTPClientMonitor` as an automatic LocalSystem service, and configures crash
+Fresh installation registers the service as manual/stopped until GUI setup is complete. It installs binaries under `Program Files\NTP Client Monitor`, registers
+`NTPClientMonitor` as a LocalSystem service, and configures crash
 restarts after 10/30/60 seconds. Configuration and logs live under
 `%ProgramData%\NTPClientMonitor`; local data access is limited to administrators
 and SYSTEM. Edit `config.json` and restart the service to apply changes.
@@ -71,7 +79,7 @@ Ubuntu: `sudo apt install --no-install-recommends ./ntp-monitor_1.0.0_amd64.deb`
 RHEL-compatible 9: `sudo dnf install ./ntp-monitor-1.0.0-1.x86_64.rpm`.
 The Linux packages install `/opt/ntp-monitor`, preserve editable configuration at
 `/etc/ntp-monitor/config.json`, and write logs under `/var/log/ntp-monitor`.
-They enable/start `ntp-monitor.service` when systemd is running; a container
+They enable/start `ntp-monitor.service` only for completed, valid configuration; a container
 without systemd can exercise the executable but not service lifecycle.
 Use `journalctl -u ntp-monitor` for operational diagnostics.
 
@@ -136,3 +144,5 @@ Packages are unsigned development artifacts. Release signing and license review
 (including bundled Python/pywin32 components) remain release tasks. The RPM's
 `LicenseRef-Proprietary` is placeholder metadata, not a license grant. No release
 has been published by these build scripts.
+
+For users, distribute installers with [install-app.md](install-app.md), not these developer build instructions.

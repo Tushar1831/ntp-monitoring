@@ -15,6 +15,7 @@ jobs:
           python-version: '3.11'
           architecture: x64
       - run: python -B -m unittest discover -s tests -v
+      - run: python scripts/smoke_first_run.py
       - run: python -m pip install -r packaging/requirements-build.txt
       - run: python scripts/build_bundle.py
       - name: Compile installer
@@ -37,6 +38,11 @@ jobs:
         with:
           python-version: '3.11'
       - run: python -B -m unittest discover -s tests -v
+      - name: Test first-run desktop flow
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-tk xvfb
+          xvfb-run -a /usr/bin/python3 scripts/smoke_first_run.py
       - name: Build bundle on Rocky Linux 9 (glibc 2.34)
         run: |
           docker run --rm -v "$PWD:/src" -w /src rockylinux:9 /bin/bash -ec '
@@ -45,7 +51,7 @@ jobs:
             python3.11 scripts/build_bundle.py
           '
           sudo chown -R "$(id -u):$(id -g)" build dist
-      - run: sudo apt-get update && sudo apt-get install -y rpm file binutils
+      - run: sudo apt-get update && sudo apt-get install -y rpm file binutils policykit-1 libx11-6 libxft2 libxss1 libfontconfig1
       - run: python scripts/build_linux_packages.py
       - name: Verify DEB without Python in clean Ubuntu container
         run: |

@@ -15,7 +15,7 @@ Monitor tests exercise real XML output together with fallback and sync decisions
 
 ## Current baseline
 
-All 78 tests pass with no expected failures. Previously recorded configuration,
+All 86 tests pass with no expected failures. Previously recorded configuration,
 response validation, synchronization, retention, recovery, and Windows startup
 regressions are now ordinary passing tests. This is a unit-test baseline, not
 Windows/Linux deployment acceptance.
@@ -54,3 +54,5 @@ Their availability does not imply that a target VM test has been executed.
 
 Desktop rendering can be checked on a display with `python3 scripts/smoke_desktop.py`
 (or `xvfb-run -a python3 scripts/smoke_desktop.py` on a Linux build host).
+
+First-run setup, cancel/save/start, and repair can be exercised with `scripts/smoke_first_run.py` on a display.
