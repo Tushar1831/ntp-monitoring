@@ -4,6 +4,10 @@ param(
     [switch]$AllowExistingPython
 )
 $ErrorActionPreference = 'Stop'
+$principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    throw 'Installer acceptance checks must run in an elevated administrator PowerShell session'
+}
 if (-not $AllowExistingPython) {
     if ((Get-Command python.exe -ErrorAction SilentlyContinue) -or (Get-Command python3.exe -ErrorAction SilentlyContinue)) {
         throw 'Use a clean VM without Python (disable Windows Python execution aliases too)'

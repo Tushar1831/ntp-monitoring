@@ -24,8 +24,8 @@ if ($Action -eq 'Remove') {
 $exe = Join-Path $InstallDirectory 'service\ntp-monitor-service.exe'
 if (-not (Test-Path -LiteralPath $exe)) { throw "Missing service executable: $exe" }
 # These local data files are writable only by SYSTEM and administrators.
-& icacls.exe $data /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' /T
-if ($LASTEXITCODE -ne 0) { throw 'Failed to secure application data' }
+. (Join-Path $PSScriptRoot 'data-permissions.ps1')
+Set-MonitorDataPermissions -Path $data
 $binary = '"' + $exe + '"'
 if ($service) {
     $existing = Get-CimInstance Win32_Service -Filter "Name='NTPClientMonitor'"

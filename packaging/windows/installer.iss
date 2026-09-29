@@ -30,6 +30,7 @@ Source: "..\..\dist\ntp-monitor-service\*"; DestDir: "{app}\service"; Flags: ign
 Source: "..\..\dist\ntp-monitor-gui\*"; DestDir: "{app}\gui"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\first-run.json"; DestName: "config.json"; DestDir: "{commonappdata}\NTPClientMonitor"; Flags: onlyifdoesntexist uninsneveruninstall
 Source: "service.ps1"; DestDir: "{app}"; Flags: ignoreversion
+Source: "data-permissions.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "service.ps1"; Flags: dontcopy
 Source: "..\..\schemas\*"; DestDir: "{app}\schemas"; Flags: ignoreversion
 

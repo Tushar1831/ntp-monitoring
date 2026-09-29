@@ -86,3 +86,20 @@ reproduced (its underlying CLI error was not supplied). The installer no longer
 fails generically on editable configuration: it leaves the service stopped,
 records diagnostics and opens the application for repair. Windows UTF-8 BOM
 configuration files are now accepted as well.
+# Windows configuration permissions regression
+
+The Windows Actions acceptance run reported `Access is denied` when reading
+`C:\ProgramData\NTPClientMonitor\config.json` after installation. The installer
+now protects the data-directory root with SYSTEM/Administrators full control
+and resets child ACLs to inherit that policy, replacing recursive inheritance
+removal. The acceptance script also checks for an elevated administrator token
+before installation so a privilege mismatch is reported directly.
+
+`scripts/test_windows_permissions.ps1` runs in the Windows workflow and checks
+existing configuration read/write access, nested files, repair of protected child
+ACLs on reinstall, and inheritance for newly created files. It also rejects
+unexpected permission entries. Run it only in an elevated Windows session.
+
+The 86 Python unit tests passed locally after this change. The native Windows
+permission test and rebuilt installer still require a successful Windows Actions
+run; they cannot be verified on the macOS development host.
